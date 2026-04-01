@@ -1,0 +1,4 @@
+Following dependencies are used in the MyNotes API:
+    1. JSON Web Token (JWT) - For Token Based Authentication.
+    2. Bcrypt - To secure the user password by using hashing and salt.
+    3. Express Validator - To validate the user credentials and Notes.
