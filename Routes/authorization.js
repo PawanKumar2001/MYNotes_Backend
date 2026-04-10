@@ -6,8 +6,8 @@ var jwt = require("jsonwebtoken");
 var getuser = require('../Middleware/getuser');
 const { body, validationResult } = require("express-validator");
 
-//Route 1 - User creation
-//Endpoint - /api/authorization/createuser
+// Route 1 - User creation
+// Endpoint - /api/authorization/createuser
 router.post("/createuser", [
     body("name", "Enter a longer name").isLength({ min: 3 }),
     body("email", "Enter a valid Email").isEmail(),
@@ -98,8 +98,8 @@ router.post("/login", [
   }
 );
 
-//Route3 - Get the user details
-//Endpoint - /api/authorization/getuser
+// Route3 - Get the user details
+// Endpoint - /api/authorization/getuser
 router.post("/getuser", getuser, async (req, res) => {
 try {
     var userID = req.user.id;
@@ -110,5 +110,61 @@ try {
         res.status(500).send("Error from server side :("); 
 }
 });
+
+// Route 4 - Update user details
+// Endpoint - /api/authorization/updateuser
+router.put("/updateuser", getuser, [
+    body("name", "Enter a longer name").optional().isLength({ min: 3 }),
+    body("password", "Password length too short").optional().isLength({ min: 8 }),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+      const { name, password } = req.body;
+
+      // At least one field must be provided
+      if (!name && !password) {
+        return res.status(400).json({ error: "Provide a new name or password to update." });
+      }
+
+      const updatedFields = {};
+
+      if (name) {
+        updatedFields.name = name;
+      }
+
+      if (password) {
+        const salt = await bcrypt.genSalt(10);
+        updatedFields.password = await bcrypt.hash(password, salt);
+      }
+
+      // Update user in DB
+      const updatedUser = await User.findByIdAndUpdate(
+        req.user.id,
+        { $set: updatedFields },
+        { new: true }
+      );
+
+      // Issue a fresh token with updated name
+      const data = {
+        user: {
+          id: updatedUser.id,
+          name: updatedUser.name,
+        },
+      };
+
+      const authorizationToken = jwt.sign(data, "psss");
+      res.json({ success: true, authorizationToken });
+
+    } catch (error) {
+      console.error(error.message);
+      res.status(500).send("Error from server side :(");
+    }
+  }
+);
 
 module.exports = router;
